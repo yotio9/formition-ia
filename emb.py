@@ -1,14 +1,8 @@
-import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from utils import cosinus
+
 modele_embeddings = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-
-
-def cosinus(a, b):
-    normes = np.linalg.norm(a) * np.linalg.norm(b)
-    if normes == 0:
-        return 0.0
-    return float(np.dot(a, b) / normes)
 
 
 def embeddings(phrases: list[str]):
