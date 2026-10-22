@@ -11,6 +11,7 @@ from formation_ia.chat.schemas import (
     DocumentIndexResponse,
     DocumentListResponse,
 )
+from formation_ia.chat.images import est_demande_image, generer_image
 from rag import indexer_pdf, lister_documents, retrouver
 
 router = APIRouter()
@@ -25,6 +26,20 @@ def discuter(request: ChatRequest) -> ChatResponse:
             status_code=422,
             detail="Le dernier message doit être une question de l'utilisateur.",
         )
+    question = request.messages[-1].content
+    if est_demande_image(question):
+        try:
+            image = generer_image(question)
+        except ValueError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except Exception as error:
+            logger.exception("Erreur lors de la génération d'image")
+            raise HTTPException(
+                status_code=502,
+                detail="Impossible de générer l'image. Vérifie le token Hugging Face et réessaie.",
+            ) from error
+        return ChatResponse(reponse="Voici l’image générée.", image=image)
+
     if not LLM_MODEL:
         raise HTTPException(
             status_code=503,
@@ -45,7 +60,6 @@ def discuter(request: ChatRequest) -> ChatResponse:
     temperature = 0.7
     try:
         if lister_documents():
-            question = request.messages[-1].content
             extraits = retrouver(question)
             if extraits:
                 temperature = 0.0

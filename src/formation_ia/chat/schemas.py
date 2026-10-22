@@ -20,6 +20,7 @@ class ChatSource(BaseModel):
 class ChatResponse(BaseModel):
     reponse: str
     sources: list[ChatSource] = Field(default_factory=list)
+    image: str | None = None
 
 
 class DocumentInfo(BaseModel):

@@ -9,3 +9,8 @@ wheels/
 # Virtual environments
 .venv
 .rag/
+
+# Local credentials
+.env
+.env.*
+!.env.example

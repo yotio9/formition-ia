@@ -236,6 +236,7 @@
       }
       .message.assistant .message-body { padding: 5px 0; }
       .message-content { color: #343631; font-size: 13px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .message-image { display: block; max-width: min(100%, 640px); max-height: 640px; margin-top: 12px; border-radius: 12px; }
       .message.user .message-content { line-height: 1.6; }
       .message.error .message-content { color: #a1443f; }
       .typing { display: flex; gap: 4px; align-items: center; height: 25px; }
@@ -387,7 +388,11 @@
       }
 
       function saveChats() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+        const savedChats = chats.map((chat) => ({
+          ...chat,
+          messages: chat.messages.map(({ role, content }) => ({ role, content })),
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedChats));
       }
 
       function renderHistory() {
@@ -423,6 +428,13 @@
         content.className = "message-content";
         content.textContent = message.content;
         body.append(content);
+        if (message.image) {
+          const image = document.createElement("img");
+          image.className = "message-image";
+          image.src = message.image;
+          image.alt = "Image générée";
+          body.append(image);
+        }
         row.append(body);
         return row;
       }
@@ -462,9 +474,19 @@
         conversation.scrollTop = conversation.scrollHeight;
       }
 
+      async function lireReponse(response) {
+        const body = await response.text();
+        try {
+          return JSON.parse(body);
+        } catch {
+          const detail = body.trim().slice(0, 200) || "réponse vide";
+          throw new Error(`Réponse non JSON du serveur (HTTP ${response.status}) : ${detail}`);
+        }
+      }
+
       async function actualiserDocuments() {
         const response = await fetch("/documents");
-        const result = await response.json();
+        const result = await lireReponse(response);
         if (!response.ok) throw new Error(result.detail || "Impossible de lire les PDF indexés.");
         const documents = result.documents || [];
         documentStatus.textContent = documents.length
@@ -484,7 +506,7 @@
           const formData = new FormData();
           formData.append("fichier", fichier);
           const response = await fetch("/documents", { method: "POST", body: formData });
-          const result = await response.json();
+          const result = await lireReponse(response);
           if (!response.ok) throw new Error(result.detail || "Impossible d'indexer ce PDF.");
           documentStatus.textContent = `${result.document} · ${result.chunks} extraits indexés`;
           documentStatus.title = documentStatus.textContent;
@@ -526,9 +548,11 @@
           const response = await fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: chat.messages }),
+            body: JSON.stringify({
+              messages: chat.messages.map(({ role, content }) => ({ role, content })),
+            }),
           });
-          const result = await response.json();
+          const result = await lireReponse(response);
           if (!response.ok) throw new Error(result.detail || "Une erreur est survenue.");
           if (typeof result.reponse !== "string" || !result.reponse.trim()) {
             throw new Error("Le modèle a renvoyé une réponse vide.");
@@ -536,7 +560,11 @@
           const sources = Array.isArray(result.sources) && result.sources.length
             ? `\n\nSources : ${result.sources.map((source) => `${source.document}, p. ${source.page}`).join(" · ")}`
             : "";
-          chat.messages.push({ role: "assistant", content: `${result.reponse}${sources}` });
+          chat.messages.push({
+            role: "assistant",
+            content: `${result.reponse}${sources}`,
+            ...(result.image ? { image: result.image } : {}),
+          });
           saveChats();
           errorBanner.classList.remove("visible");
         } catch (error) {

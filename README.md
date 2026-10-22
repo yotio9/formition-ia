@@ -10,7 +10,12 @@ Configure les variables suivantes dans un fichier `.env` à la racine du projet 
 LLM_BASE_URL=https://ton-serveur-ia/v1
 LLM_API_KEY=ta-cle-api
 LLM_MODEL=nom-du-modele
+HF_TOKEN=ton-token-hugging-face
 ```
+
+Le token Hugging Face sert à la génération d'images. Garde les vraies valeurs
+uniquement dans `.env` : ce fichier est ignoré par Git. Tu peux partir de
+`.env.example` et remplacer ses valeurs d'exemple.
 
 Puis démarre le serveur :
 
