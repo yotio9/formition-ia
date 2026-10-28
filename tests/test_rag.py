@@ -75,6 +75,21 @@ class RagTests(unittest.TestCase):
         self.assertEqual(len(rag.lister_documents()), 1)
         self.assertEqual(rag.lister_documents()[0]["document"], "renomme.pdf")
 
+    def test_suppression_retire_le_pdf_et_invalide_le_cache(self) -> None:
+        with (
+            patch.object(rag, "PdfReader", FauxLecteurPDF),
+            patch.object(rag, "obtenir_modele_embeddings", FauxModele),
+        ):
+            rag.indexer_pdf(b"%PDF-1.4 contenu", "inf-dexe.pdf")
+            documents = rag.lister_documents()
+            self.assertEqual(len(rag.retrouver("alpha")), 2)
+
+            self.assertTrue(rag.supprimer_document(documents[0]["id"]))
+
+            self.assertEqual(rag.lister_documents(), [])
+            self.assertEqual(rag.retrouver("alpha"), [])
+            self.assertFalse(rag.supprimer_document(documents[0]["id"]))
+
     def test_refuse_un_fichier_qui_n_est_pas_un_pdf(self) -> None:
         with self.assertRaisesRegex(ValueError, "n'est pas un PDF valide"):
             rag.indexer_pdf(b"texte sans entete PDF", "document.txt")

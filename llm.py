@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from formation_ia.chat.routes import router as chat_router
 from formation_ia.chat.images import est_demande_image, generer_image
 from rag import obtenir_modele_embeddings
@@ -12,9 +13,16 @@ from dotenv import load_dotenv
 
 app = FastAPI()
 app.include_router(chat_router)
+app.mount(
+    "/static",
+    StaticFiles(directory=Path(__file__).parent / "static"),
+    name="static",
+)
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 load_dotenv()
-URL = os.getenv("LLM_URL")
+URL = os.getenv("LLM_URL") or os.getenv("LLM_BASE_URL")
 MODEL = os.getenv("LLM_MODEL")
 KEY = os.getenv("LLM_API_KEY")
 
@@ -28,8 +36,8 @@ class QueryRequest(BaseModel):
 
 
 @app.get("/", include_in_schema=False)
-async def accueil():
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+async def accueil(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.post("/llm")

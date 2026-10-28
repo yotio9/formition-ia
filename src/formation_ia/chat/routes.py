@@ -3,7 +3,11 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from formation_ia.chat.models import LLM_MODEL, generer_reponse
+from formation_ia.chat.models import (
+    get_available_models,
+    generer_reponse,
+    resolve_model_name,
+)
 from formation_ia.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -12,11 +16,23 @@ from formation_ia.chat.schemas import (
     DocumentListResponse,
 )
 from formation_ia.chat.images import est_demande_image, generer_image
-from rag import indexer_pdf, lister_documents, retrouver
+from rag import indexer_pdf, lister_documents, retrouver, supprimer_document
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 MAX_PDF_BYTES = 20 * 1024 * 1024
+
+
+@router.get("/models")
+def lister_modeles() -> dict[str, list[str]]:
+    try:
+        return {"models": get_available_models()}
+    except Exception as error:
+        logger.exception("Impossible de récupérer les modèles disponibles")
+        raise HTTPException(
+            status_code=502,
+            detail="Impossible de récupérer les modèles auprès du fournisseur.",
+        ) from error
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -40,11 +56,23 @@ def discuter(request: ChatRequest) -> ChatResponse:
             ) from error
         return ChatResponse(reponse="Voici l’image générée.", image=image)
 
-    if not LLM_MODEL:
+    try:
+        available_models = get_available_models()
+    except Exception as error:
+        logger.exception("Impossible de vérifier les modèles disponibles")
+        raise HTTPException(
+            status_code=502,
+            detail="Impossible de vérifier les modèles auprès du fournisseur.",
+        ) from error
+    if not available_models:
         raise HTTPException(
             status_code=503,
-            detail="Le modèle n'est pas configuré. Vérifie la variable LLM_MODEL.",
+            detail="Le fournisseur n'a renvoyé aucun modèle disponible.",
         )
+    try:
+        selected_model = resolve_model_name(request.model, available_models)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
     messages = [
         {
@@ -88,12 +116,20 @@ def discuter(request: ChatRequest) -> ChatResponse:
                         sources.append(
                             ChatSource(document=source[0], page=source[1])
                         )
-        contenu = generer_reponse(messages, temperature=temperature)
+        contenu = generer_reponse(
+            messages,
+            temperature=temperature,
+            model=selected_model,
+            available_models=available_models,
+        )
     except Exception as error:
         logger.exception("Erreur lors de la recherche documentaire ou du chat")
         raise HTTPException(
             status_code=502,
-            detail="Impossible de traiter la question. Vérifie la configuration du modèle et réessaie.",
+            detail=(
+                f"Le modèle « {selected_model} » n'a pas répondu. "
+                "Vérifie sa disponibilité auprès du fournisseur et réessaie."
+            ),
         ) from error
 
     if not contenu:
@@ -114,6 +150,21 @@ def documents() -> DocumentListResponse:
             status_code=500,
             detail="Impossible de lire l'index des documents.",
         ) from error
+
+
+@router.delete("/documents/{identifiant}")
+def supprimer_document_indexe(identifiant: str) -> dict[str, bool]:
+    try:
+        supprime = supprimer_document(identifiant)
+    except Exception as error:
+        logger.exception("Impossible de supprimer le document %s", identifiant)
+        raise HTTPException(
+            status_code=500,
+            detail="Impossible de supprimer ce PDF de l'index.",
+        ) from error
+    if not supprime:
+        raise HTTPException(status_code=404, detail="Ce PDF n'existe pas dans l'index.")
+    return {"deleted": True}
 
 
 @router.post("/documents", response_model=DocumentIndexResponse)

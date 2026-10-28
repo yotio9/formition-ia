@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f7f5" />
+    <title>Mon IA — Assistant personnel</title>
+    <link rel="stylesheet" href="/static/styles.css?v=model-switch-1" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 14 9l5.5 2-5.5 2-2 5.5L10 13l-5.5-2L10 9l2-5.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z" fill="currentColor"/></svg>
+          </span>
+          <span>Kershaw 💯 IA</span>
+        </div>
+        <button class="new-chat" id="new-chat" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          Nouvelle conversation
+        </button>
+
+        <form class="form-model" id="model-form">
+          <label for="model-select">Modèle</label>
+          <select id="model-select" aria-label="Sélectionner un modèle d'IA">
+            <option value="">Chargement des modèles…</option>
+          </select>
+          <button class="refresh-models" id="refresh-models" type="button">Actualiser les modèles</button>
+        </form>
+
+        <p class="section-label">Récents</p>
+        <nav class="history" id="history" aria-label="Conversations récentes"></nav>
+        <div class="sidebar-note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3 7.8 7.5 9.5 4.5-1.7 7.5-5.1 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.5"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Une interface simple pour discuter avec ton propre modèle IA.</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="model-name"><span class="model-dot"></span> Mon assistant <span class="model-label">· modèle actif :</span> <span class="active-model" id="active-model">Chargement…</span></div>
+          <div class="topbar-actions">
+            <details class="pdf-menu">
+              <summary class="document-status" id="document-status" aria-live="polite">PDF indexés : 0</summary>
+              <div class="pdf-menu-panel">
+                <p class="pdf-menu-title">PDF indexés</p>
+                <nav class="pdf-list" id="pdf-list" aria-label="Gérer les PDF indexés"></nav>
+              </div>
+            </details>
+            <span class="model-label">Privé et à toi</span>
+          </div>
+        </header>
+        <section class="conversation" id="conversation" aria-live="polite">
+          <div class="welcome" id="welcome">
+            <div class="welcome-mark" aria-hidden="true">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 14 9l5.5 2-5.5 2-2 5.5L10 13l-5.5-2L10 9l2-5.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z" fill="currentColor"/></svg>
+            </div>
+            <h1>Anitché  Boss Kershaw💯, on commence&nbsp;?</h1>
+            <p class="welcome-copy">Je suis ton assistant personnel. Pose-moi une question ou choisis une idée pour démarrer.</p>
+            <div class="suggestions">
+              <button class="suggestion" type="button" data-prompt="Explique-moi simplement comment fonctionne l'intelligence artificielle."><strong>Comprendre un sujet</strong><span>Une explication claire, pas à pas</span></button>
+              <button class="suggestion" type="button" data-prompt="Aide-moi à écrire un message professionnel pour demander un rendez-vous."><strong>Écrire un message</strong><span>Un brouillon prêt à personnaliser</span></button>
+              <button class="suggestion" type="button" data-prompt="Donne-moi trois idées de projets simples pour apprendre à coder."><strong>Trouver des idées</strong><span>Pour un projet ou une envie</span></button>
+              <button class="suggestion" type="button" data-prompt="Aide-moi à organiser ma semaine avec une méthode simple."><strong>S'organiser</strong><span>Un plan concret pour avancer</span></button>
+            </div>
+          </div>
+          <div class="message-list" id="message-list"></div>
+        </section>
+        <div class="composer-wrap">
+          <p class="error-banner" id="error-banner" role="alert"></p>
+          <form class="composer" id="composer">
+            <label class="upload-button" for="document-upload" title="Ajouter un PDF" aria-label="Ajouter un PDF">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <input id="document-upload" type="file" accept="application/pdf,.pdf" aria-label="Ajouter un PDF" />
+            </label>
+            <textarea id="prompt" rows="1" maxlength="12000" placeholder="Écris ton message..." aria-label="Ton message"></textarea>
+            <button class="send" id="send" type="submit" aria-label="Envoyer le message">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m0 0L6.5 10.5M12 5l5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </form>
+          <p class="hint">L'IA peut se tromper. Vérifie les informations importantes.</p>
+        </div>
+      </main>
+    </div>
+
+    <script src="/static/app.js?v=model-switch-1" defer></script>
+  </body>
+</html>

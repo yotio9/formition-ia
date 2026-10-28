@@ -178,13 +178,29 @@ def lister_documents() -> list[dict[str, Any]]:
             dict(ligne)
             for ligne in connexion.execute(
                 """
-                SELECT name AS document, page_count AS pages,
+                SELECT id, name AS document, page_count AS pages,
                        chunk_count AS chunks, indexed_at
                 FROM documents
                 ORDER BY indexed_at DESC, name
                 """
             )
         ]
+    finally:
+        connexion.close()
+
+
+def supprimer_document(identifiant: str) -> bool:
+    connexion = _connexion()
+    try:
+        with connexion:
+            resultat = connexion.execute(
+                "DELETE FROM documents WHERE id = ?",
+                (identifiant,),
+            )
+            if resultat.rowcount == 0:
+                return False
+            connexion.execute("UPDATE index_state SET revision = revision + 1 WHERE id = 1")
+        return True
     finally:
         connexion.close()
 
